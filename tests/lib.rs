@@ -145,3 +145,45 @@ fn remove() {
     assert_eq!(n3.preceding_siblings(arena).collect::<Vec<_>>().len(), 1);
     assert_eq!(n3.following_siblings(arena).collect::<Vec<_>>().len(), 1);
 }
+
+#[test]
+fn remove_tree() {
+    let arena = &mut Arena::new();
+    let n0 = arena.new_node(0);
+    let n1 = arena.new_node(1);
+    let n2 = arena.new_node(2);
+    let n3 = arena.new_node(3);
+    let n4 = arena.new_node(4);
+    let n5 = arena.new_node(5);
+    let n6 = arena.new_node(6);
+    assert!(n0.append(n1, arena).is_ok());
+    assert!(n0.append(n2, arena).is_ok());
+    assert!(n0.append(n3, arena).is_ok());
+    assert!(n2.append(n4, arena).is_ok());
+    assert!(n2.append(n5, arena).is_ok());
+    assert!(n2.append(n5, arena).is_ok());
+    assert!(n2.append(n6, arena).is_ok());
+    assert!(n2.remove_tree(arena).is_ok());
+
+    let node_refs = arena
+        .iter()
+        .filter_map(|x| if !x.is_removed() { Some(x.data) } else { None })
+        .collect::<Vec<_>>();
+    assert_eq!(node_refs, vec![0, 1, 3]);
+    assert_eq!(n2.children(arena).collect::<Vec<_>>().len(), 0);
+    assert_eq!(n2.descendants(arena).collect::<Vec<_>>().len(), 1);
+    assert_eq!(n2.preceding_siblings(arena).collect::<Vec<_>>().len(), 1);
+    assert_eq!(n2.following_siblings(arena).collect::<Vec<_>>().len(), 1);
+
+    assert!(n3.remove_tree(arena).is_ok());
+
+    let node_refs = arena
+        .iter()
+        .filter_map(|x| if !x.is_removed() { Some(x.data) } else { None })
+        .collect::<Vec<_>>();
+    assert_eq!(node_refs, vec![0, 1]);
+    assert_eq!(n3.children(arena).collect::<Vec<_>>().len(), 0);
+    assert_eq!(n3.descendants(arena).collect::<Vec<_>>().len(), 1);
+    assert_eq!(n3.preceding_siblings(arena).collect::<Vec<_>>().len(), 1);
+    assert_eq!(n3.following_siblings(arena).collect::<Vec<_>>().len(), 1);
+}

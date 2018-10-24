@@ -628,6 +628,51 @@ impl NodeId {
         }
         Ok(())
     }
+
+    /// Remove a node and children from the arena.
+    ///
+    /// Please note that the node will not be removed from the internal arena
+    /// storage, but marked as `removed`. Traversing the arena returns a
+    /// the plain iterator and contains removed elements too.
+    pub fn remove_tree<T>(self, arena: &mut Arena<T>) -> Fallible<()> {
+        self.remove_tree_with_fix(arena, true)
+    }
+
+    pub fn remove_tree_with_fix<T>(self, arena: &mut Arena<T>, fix_siblings: bool) -> Fallible<()> {
+        // Modify the parents of the childs
+        for child in self.children(arena).collect::<Vec<_>>() {
+            child.remove_tree_with_fix(arena, false)?;
+        }
+
+        if fix_siblings {
+            // Retrieve needed values
+            let (previous_sibling, next_sibling) = {
+                let node = &mut arena[self];
+                (
+                    node.previous_sibling.take(),
+                    node.next_sibling.take(),
+                )
+            };
+
+            if let Some(previous_sibling) = previous_sibling {
+                arena[previous_sibling].next_sibling = next_sibling
+            }
+
+            if let Some(next_sibling) = next_sibling {
+                arena[next_sibling].previous_sibling = previous_sibling
+            }
+        }
+
+        // Cleanup the current node
+        self.detach(arena);
+        {
+            let mut_self = &mut arena[self];
+            mut_self.first_child = None;
+            mut_self.last_child = None;
+            mut_self.removed = true;
+        }
+        Ok(())
+    }
 }
 
 macro_rules! impl_node_iterator {
